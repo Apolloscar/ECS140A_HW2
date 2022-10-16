@@ -26,5 +26,12 @@ type Parser interface {
 
 // NewParser creates a struct of a type that satisfies the Parser interface.
 func NewParser() Parser {
-	panic("TODO: implement NewParser")
+	type Node struct{
+		
+	}
+	return nil
+}
+
+(Node)Parse(string) (*Term, error) {
+
 }
