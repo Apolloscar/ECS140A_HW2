@@ -28,14 +28,15 @@ type Parser interface {
 // NewParser creates a struct of a type that satisfies the Parser interface.
 type Node struct {
 	// Typ is the type of this term
-	x int
+	heads []*Term
 }
 
-var m map[int]bool
+var m map[string]*Term
 
 func NewParser() Parser {
-
-	x := Node{0}
+	inp := []*Term{}
+	x := Node{inp}
+	m = make(map[string]*Term)
 	return x
 }
 
@@ -43,13 +44,113 @@ func (x Node) Parse(a string) (*Term, error) {
 	if a == "" {
 		return nil, nil
 	}
-	w := Term{0, "0", nil, nil}
 
 	if IsValidParser(a) == false {
 		return nil, fmt.Errorf("Invalid")
 	}
 
-	return &w, nil
+	lex := newLexer(a)
+
+	tok, _ := lex.next()
+
+	if tok.typ == tokenNumber {
+
+		return &Term{1, tok.literal, nil, nil}, nil
+
+	}
+
+	if tok.typ == tokenVariable {
+
+		return &Term{2, tok.literal, nil, nil}, nil
+
+	}
+
+	var save *Term
+
+	if tok.typ == tokenAtom {
+
+		currentLiteral := tok.literal
+
+		tok, _ = lex.next()
+		if tok.typ == tokenEOF {
+
+			return &Term{0, currentLiteral, nil, nil}, nil
+
+		}
+
+		m[currentLiteral] = &Term{0, currentLiteral, nil, nil}
+
+		x.heads = append(x.heads, &Term{3, "", m[currentLiteral], []*Term{}})
+
+		save = x.heads[0]
+
+		for len(x.heads) > 0 {
+
+			if tok.typ == tokenNumber {
+
+				_, ok := m[tok.literal]
+				if ok == false {
+					m[tok.literal] = &Term{1, tok.literal, nil, nil}
+				}
+
+				x.heads[len(x.heads)-1].Args = append(x.heads[len(x.heads)-1].Args, m[tok.literal])
+
+			}
+
+			if tok.typ == tokenVariable {
+				_, ok := m[tok.literal]
+				if ok == false {
+					m[tok.literal] = &Term{2, tok.literal, nil, nil}
+				}
+
+				x.heads[len(x.heads)-1].Args = append(x.heads[len(x.heads)-1].Args, m[tok.literal])
+
+			}
+
+			if tok.typ == tokenAtom {
+				currentLiteral = tok.literal
+				tok, _ := lex.next()
+				if tok.typ == tokenComma || tok.typ == tokenRpar {
+					adress, ok := m[currentLiteral]
+					if ok == false {
+						m[currentLiteral] = &Term{0, currentLiteral, nil, nil}
+						adress = m[currentLiteral]
+
+					}
+
+					x.heads[len(x.heads)-1].Args = append(x.heads[len(x.heads)-1].Args, adress)
+
+				}
+				if tok.typ == tokenLpar {
+
+					adress, ok := m[currentLiteral]
+					if ok == false {
+						m[currentLiteral] = &Term{0, currentLiteral, nil, nil}
+						adress = m[currentLiteral]
+					}
+
+					x.heads = append(x.heads, &Term{3, "", adress, []*Term{}})
+
+				}
+
+			}
+
+			if tok.typ == tokenRpar {
+				if len(x.heads) > 1 {
+					x.heads[len(x.heads)-2].Args = append(x.heads[len(x.heads)-2].Args, x.heads[len(x.heads)-1])
+					x.heads = x.heads[0 : len(x.heads)-1]
+				} else {
+					return save, nil
+				}
+
+			}
+			tok, _ = lex.next()
+		}
+
+	}
+
+	return save, nil
+
 }
 
 func IsValidParser(given string) bool {
@@ -83,6 +184,7 @@ func IsValidParser(given string) bool {
 			if tok.typ != tokenAtom {
 				return false
 			}
+
 			tok, err = lex.next()
 			if err != nil {
 				return false
