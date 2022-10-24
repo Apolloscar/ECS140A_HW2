@@ -27,15 +27,15 @@ type Parser interface {
 
 // NewParser creates a struct of a type that satisfies the Parser interface.
 type Node struct {
-	// Typ is the type of this term
-	heads []*Term
+	heads     []*Term
+	all_atoms []*Term
 }
 
 var m map[string]*Term
 
 func NewParser() Parser {
 	inp := []*Term{}
-	x := Node{inp}
+	x := Node{inp, []*Term{}}
 	m = make(map[string]*Term)
 	return x
 }
@@ -136,9 +136,28 @@ func (x Node) Parse(a string) (*Term, error) {
 			}
 
 			if tok.typ == tokenRpar {
+				add_to := x.heads[len(x.heads)-1]
+
 				if len(x.heads) > 1 {
-					x.heads[len(x.heads)-2].Args = append(x.heads[len(x.heads)-2].Args, x.heads[len(x.heads)-1])
+					for i := 0; i < len(x.all_atoms); i++ {
+						if x.all_atoms[i].Typ == add_to.Typ && x.all_atoms[i].Literal == add_to.Literal && x.all_atoms[i].Functor == add_to.Functor && len(x.all_atoms[i].Args) == len(add_to.Args) {
+							found := 1
+							for j := 0; j < len(x.all_atoms[i].Args); j++ {
+								if x.all_atoms[i].Args[j] != add_to.Args[j] {
+									found = 0
+									j = len(x.all_atoms[i].Args)
+								}
+							}
+							if found == 1 {
+								add_to = x.all_atoms[i]
+								i = len(x.all_atoms)
+							}
+						}
+					}
+					x.all_atoms = append(x.all_atoms, add_to)
+					x.heads[len(x.heads)-2].Args = append(x.heads[len(x.heads)-2].Args, add_to)
 					x.heads = x.heads[0 : len(x.heads)-1]
+
 				} else {
 					return save, nil
 				}

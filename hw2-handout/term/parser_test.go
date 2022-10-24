@@ -244,7 +244,7 @@ func TestParseTermWithSharing(t *testing.T) {
 		termWithSharingTest1,
 		termWithSharingTest2,
 		termWithSharingTest3,
-		// termWithSharingTest4,
+		termWithSharingTest4,
 	} {
 		func() {
 			defer func() {
